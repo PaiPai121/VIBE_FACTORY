@@ -1,8 +1,15 @@
 # Google Generative AI SDK (Gemini)
+# 注意：google-generativeai 包已被弃用，请迁移到 google-genai
 google-generativeai>=0.3.0
 
 # Pydantic for data validation
 pydantic>=2.5.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# Async support
+asyncio-mqtt>=0.10.0; python_version >= '3.7'
 
 # Python standard library additional dependencies (optional, for better development experience)
 pathlib2>=2.3.7; python_version < '3.4'
@@ -17,6 +24,5 @@ pathlib2>=2.3.7; python_version < '3.4'
 # mkdocs>=1.5.0
 # mkdocs-material>=9.0.0
 
-# Logging and configuration (optional)
-# python-dotenv>=1.0.0
+# Rich for enhanced output (optional)
 # rich>=13.0.0
