@@ -15,6 +15,10 @@ from datetime import datetime
 try:
     import google.generativeai as genai
     from pydantic import BaseModel
+    from dotenv import load_dotenv
+    
+    # 加载环境变量
+    load_dotenv()
 except ImportError as e:
     print(f"请安装必要的依赖: pip install -r requirements.txt")
     print(f"导入错误: {e}")

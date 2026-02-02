@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 交互式需求收集器
 通过友好的问答界面收集用户项目需求
@@ -18,7 +19,7 @@ class InteractiveCollector:
     def print_header(self):
         """打印欢迎界面"""
         print("=" * 60)
-        print("🏗️  Vibe Coding 架构师 Agent - 交互式需求收集")
+        print("Vibe Coding 架构师 Agent - 交互式需求收集")
         print("=" * 60)
         print("请回答以下问题，我将为您设计完美的项目架构！")
         print()
@@ -38,7 +39,7 @@ class InteractiveCollector:
             elif not required:
                 return ""
             else:
-                print("❌ 此问题为必填项，请重新输入。")
+                print("此问题为必填项，请重新输入。")
     
     def ask_multiple_choice(self, prompt: str, options: List[str]) -> str:
         """多选题"""
@@ -54,11 +55,11 @@ class InteractiveCollector:
                     if 0 <= index < len(options):
                         return options[index]
                     else:
-                        print("❌ 请输入有效的数字范围")
+                        print("请输入有效的数字范围")
                 else:
-                    print("❌ 请输入数字")
+                    print("请输入数字")
             except ValueError:
-                print("❌ 请输入有效的数字")
+                print("请输入有效的数字")
     
     def ask_checkbox(self, prompt: str, options: List[str]) -> List[str]:
         """多选框"""
@@ -86,18 +87,33 @@ class InteractiveCollector:
                 if valid:
                     return selected
                 else:
-                    print("❌ 请输入有效的数字范围")
+                    print("请输入有效的数字范围")
             except ValueError:
-                print("❌ 请输入有效的数字，用逗号分隔")
+                print("请输入有效的数字，用逗号分隔")
     
     def collect_basic_info(self) -> Dict[str, str]:
         """收集基本信息"""
-        print("\n📋 基本信息")
+        print("\n基本信息")
         print("-" * 30)
         
-        project_name = self.ask_question("项目名称")
-        project_description = self.ask_question("项目描述")
-        author = self.ask_question("作者姓名", required=False)
+        try:
+            project_name = self.ask_question("项目名称")
+            if not project_name:
+                project_name = "未命名项目"
+        except (EOFError, KeyboardInterrupt):
+            project_name = "未命名项目"
+            
+        try:
+            project_description = self.ask_question("项目描述")
+            if not project_description:
+                project_description = "项目描述待补充"
+        except (EOFError, KeyboardInterrupt):
+            project_description = "项目描述待补充"
+            
+        try:
+            author = self.ask_question("作者姓名", required=False)
+        except (EOFError, KeyboardInterrupt):
+            author = "开发者"
         
         return {
             "project_name": project_name,
@@ -107,7 +123,7 @@ class InteractiveCollector:
     
     def collect_tech_info(self) -> Dict[str, str]:
         """收集技术信息"""
-        print("\n⚙️  技术栈选择")
+        print("\n技术栈选择")
         print("-" * 30)
         
         # 编程语言
@@ -154,7 +170,7 @@ class InteractiveCollector:
     
     def collect_features(self) -> List[str]:
         """收集功能需求"""
-        print("\n🎯 功能需求")
+        print("\n功能需求")
         print("-" * 30)
         
         # 根据项目类型提供不同的功能选项
@@ -209,7 +225,7 @@ class InteractiveCollector:
     
     def collect_deployment(self) -> Dict[str, str]:
         """收集部署需求"""
-        print("\n🚀 部署需求")
+        print("\n部署需求")
         print("-" * 30)
         
         platforms = [
@@ -231,7 +247,7 @@ class InteractiveCollector:
     
     def collect_additional_info(self) -> str:
         """收集其他信息"""
-        print("\n💬 补充说明")
+        print("\n补充说明")
         print("-" * 30)
         
         return self.ask_question("其他特殊需求或说明", required=False)
@@ -241,28 +257,28 @@ class InteractiveCollector:
         summary = f"""
 项目需求摘要:
 
-📋 基本信息
+基本信息
 - 项目名称: {data['basic']['project_name']}
 - 项目描述: {data['basic']['description']}
 - 作者: {data['basic']['author']}
 
-⚙️  技术栈
+技术栈
 - 编程语言: {data['tech']['language']}
 - 项目类型: {data['tech']['project_type']}
 - 主要框架: {data['tech']['framework']}
 - 数据库: {data['tech']['database']}
 
-🎯 功能需求
+功能需求
 {chr(10).join(f'- {feature}' for feature in data['features'])}
 
-🚀 部署需求
+部署需求
 - 部署平台: {data['deployment']['platform']}
 - 环境配置: {data['deployment']['environments']}
 """
 
         if data['additional']:
             summary += f"""
-💬 补充说明
+补充说明
 {data['additional']}
 """
         
@@ -293,16 +309,16 @@ class InteractiveCollector:
         
         # 确认信息
         print("\n" + "=" * 60)
-        print("📋 需求确认")
+        print("需求确认")
         print("=" * 60)
         print(summary)
         
         confirm = input("\n确认以上需求正确吗？(y/N): ").strip().lower()
         if confirm in ['y', 'yes']:
-            print("\n✅ 需求收集完成，正在生成项目架构...")
+            print("\n需求收集完成，正在生成项目架构...")
             return summary
         else:
-            print("\n❌ 需求收集已取消。")
+            print("\n需求收集已取消。")
             sys.exit(0)
 
 
@@ -316,10 +332,10 @@ def main():
 if __name__ == "__main__":
     try:
         requirement = main()
-        print(f"\n🎉 生成需求摘要:\n{requirement}")
+        print(f"\n生成需求摘要:\n{requirement}")
     except KeyboardInterrupt:
-        print("\n\n❌ 用户取消操作。")
+        print("\n\n用户取消操作。")
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ 发生错误: {e}")
+        print(f"\n发生错误: {e}")
         sys.exit(1)

@@ -473,13 +473,14 @@ def main():
     parser = argparse.ArgumentParser(description="Vibe Coding 架构师 Agent")
     parser.add_argument("requirement", nargs="?", help="项目需求描述")
     parser.add_argument("--file", "-f", help="从文件读取需求")
-    parser.add_argument("--interactive", "-i", action="store_true", help="交互式输入需求")
+    parser.add_argument("--interactive", "-i", action="store_true", help="交互式输入需求（默认模式）")
     
     args = parser.parse_args()
     
     # 获取需求
     requirement = ""
-    if args.interactive:
+    # 默认进入交互式模式
+    if args.interactive or (not args.file and not args.requirement):
         # 使用交互式收集器
         try:
             collector = InteractiveCollector()
