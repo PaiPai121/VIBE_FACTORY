@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Vibe Coding 架构师 Agent 测试脚本
-用于验证系统功能是否正常
+验证简化版和交互式功能
 """
 
 import sys
@@ -22,6 +22,20 @@ def test_imports():
         print(f"[ERROR] schema.project 导入失败: {e}")
         return False
     
+    try:
+        from interactive import InteractiveCollector
+        print("[OK] interactive 模块导入成功")
+    except ImportError as e:
+        print(f"[ERROR] interactive 导入失败: {e}")
+        return False
+    
+    try:
+        from main_simple import VibeArchitect
+        print("[OK] main_simple 模块导入成功")
+    except ImportError as e:
+        print(f"[ERROR] main_simple 导入失败: {e}")
+        return False
+    
     return True
 
 def test_models():
@@ -38,7 +52,9 @@ def test_models():
             title="测试任务",
             description="这是一个测试任务",
             target_path="output/test_project/src/main.py",
-            verification="验收标准：文件存在且包含测试代码"
+            verification="验收标准：文件存在且包含测试代码",
+            priority="high",
+            status="pending"
         )
         print("[OK] Task 模型创建成功")
         
@@ -46,11 +62,12 @@ def test_models():
         project = ProjectSpec(
             project_name="测试项目",
             description="这是一个测试项目",
-            tasks=[task]
+            tasks=[task],
+            author="测试用户",
+            tech_stack={"python": "3.9"},
+            config={}
         )
         print("[OK] ProjectSpec 模型创建成功")
-        
-        # 注意：简化版本中没有额外的方法，跳过方法测试
         
         return True
         
@@ -67,6 +84,8 @@ def test_file_structure():
         "prompts/system.txt",
         "prompts/architect.txt",
         "main.py",
+        "main_simple.py",
+        "interactive.py",
         "requirements.txt",
         ".env.example",
         "README.md"
@@ -113,24 +132,19 @@ def test_prompt_files():
         print(f"[ERROR] 提示文件测试失败: {e}")
         return False
 
-def test_main_module():
-    """测试主模块"""
-    print("\n[测试] 测试主模块...")
+def test_main_modules():
+    """测试主程序模块"""
+    print("\n[测试] 测试主程序模块...")
     
     try:
-        # 检查 main.py 是否可以导入（需要环境变量）
-        if os.getenv("SKIP_MAIN_TEST"):
-            print("[SKIP] 跳过主模块测试（需要 API 密钥）")
-            return True
-        
-        # 这里只是测试语法，不实际调用 API
+        # 测试简化版主程序
         import ast
         
-        with open("main.py", 'r', encoding='utf-8') as f:
+        with open("main_simple.py", 'r', encoding='utf-8') as f:
             source = f.read()
         
         ast.parse(source)
-        print("[OK] main.py 语法正确")
+        print("[OK] main_simple.py 语法正确")
         
         # 检查关键函数是否存在
         tree = ast.parse(source)
@@ -144,13 +158,41 @@ def test_main_module():
                 print(f"[ERROR] 函数 {func} 不存在")
                 return False
         
+        # 测试 VibeArchitect 类实例化
+        from main_simple import VibeArchitect
+        architect = VibeArchitect()
+        print("[OK] VibeArchitect 类实例化成功")
+        
         return True
         
     except SyntaxError as e:
-        print(f"[ERROR] main.py 语法错误: {e}")
+        print(f"[ERROR] main_simple.py 语法错误: {e}")
         return False
     except Exception as e:
         print(f"[ERROR] 主模块测试失败: {e}")
+        return False
+
+def test_interactive_functionality():
+    """测试交互式功能"""
+    print("\n[测试] 测试交互式功能...")
+    
+    try:
+        from interactive import InteractiveCollector
+        
+        # 测试实例化
+        collector = InteractiveCollector()
+        print("[OK] InteractiveCollector 实例化成功")
+        
+        # 测试问题询问方法（不实际询问）
+        if hasattr(collector, 'ask_question') and hasattr(collector, 'collect'):
+            print("[OK] 交互式方法存在")
+            return True
+        else:
+            print("[ERROR] 交互式方法缺失")
+            return False
+        
+    except Exception as e:
+        print(f"[ERROR] 交互式功能测试失败: {e}")
         return False
 
 def run_tests():
@@ -162,7 +204,8 @@ def run_tests():
         test_models,
         test_file_structure,
         test_prompt_files,
-        test_main_module
+        test_main_modules,
+        test_interactive_functionality
     ]
     
     passed = 0
@@ -177,10 +220,10 @@ def run_tests():
     if passed == total:
         print("[SUCCESS] 所有测试通过！系统已准备就绪。")
         print("\n[USAGE] 使用说明:")
-        print("1. 设置环境变量: cp .env.example .env")
-        print("2. 编辑 .env 文件添加 OPENAI_API_KEY")
-        print("3. 安装依赖: pip install -r requirements.txt")
-        print("4. 运行程序: python main.py \"你的项目需求\"")
+        print("1. 直接使用简化版: python main_simple.py '你的项目需求'")
+        print("2. 交互式输入: python main_simple.py --interactive")
+        print("3. 从文件读取: python main_simple.py --file requirements.txt")
+        print("\n[NOTE] 简化版不需要 API Key，使用本地智能分析")
         return True
     else:
         print("[ERROR] 部分测试失败，请检查错误信息。")
