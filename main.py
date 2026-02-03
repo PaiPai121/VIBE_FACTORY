@@ -49,7 +49,7 @@ async def main():
     print("正在初始化系统...\n")
     
     # 初始化核心组件
-    orchestrator = Orchestrator("config/default_config.json")  # 使用默认配置文件
+    orchestrator = Orchestrator("config/default_config.json")  # 使用双Zhipu配置文件
     architect = Architect()
     
     print("系统初始化完成!\n")

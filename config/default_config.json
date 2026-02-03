@@ -4,8 +4,8 @@
     "model": "glm-4-flash"
   },
   "auditor": {
-    "provider": "gemini",
-    "model": "gemini-latest-flash"
+    "provider": "zhipu",
+    "model": "glm-4-flash"
   },
   "fallback_models": {
     "gemini": "gemini-pro",
