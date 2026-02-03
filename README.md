@@ -1,270 +1,115 @@
-# Vibe Coding 架构师 Agent
+# Vibe Nexus 框架
 
-🏗️ **智能项目架构设计工具** - 采用辩论式 AI 架构设计，通过提案者和审计者的对话生成最优方案
+Vibe Nexus 是一个基于辩论式AI协作的项目生成框架。它利用多个AI提供者之间的智能辩论过程，自动生成高质量的项目结构和代码。
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![Python](https://img.shields.io/badge/python-3.8%2B-green)
-![License](https://img.shields.io/badge/license-MIT-purple)
+## 核心特性
 
-## ✨ 核心特性
+- **辩论式AI协作**: 利用两个不同的AI提供者（如Google Gemini和Zhipu GLM）进行观点辩论，生成更完善的解决方案
+- **模块化架构**: 遵循模块化驱动原则，所有提供者都继承自统一的基础类
+- **环境变量管理**: 通过.env文件安全地管理API密钥等敏感信息
+- **鲁棒性设计**: 具备错误处理和降级机制，确保系统稳定性
+- **目录隔离**: 生成的项目代码完全隔离在output/目录下，不污染根目录
+- **PnC准则**: 每个任务都包含物理路径(target_path)和验证步骤(verification)
 
-- 🧠 **辩论式 AI 架构设计** - 通过提案者和审计者的对话生成最优方案
-- 📁 **严格的目录管理** - 遵循"禁止根目录污染"原则
-- 🔧 **自动化代码生成** - 根据任务自动创建代码占位文件
-- 📋 **结构化任务管理** - Pydantic 模型确保数据完整性
-- 🌐 **跨平台兼容** - 使用 pathlib 处理路径，支持 Windows/Linux/Mac
-- 📝 **文档自动生成** - 自动生成 SPEC.md 和任务配置
-- 🔄 **多提供商支持** - 支持 Gemini、Zhipu 等多种 AI 模型
+## 宪法原则
 
-## 🚀 快速开始
+Vibe Nexus 严格遵循其核心宪法，确保代码质量和架构一致性：
 
-### 1. 环境准备
+### 框架开发约束 (Meta Rules)
+- **模块化驱动**: 所有 Provider (Gemini/GLM) 必须继承自 Base 类，严禁硬编码
+- **环境变量感知**: 严禁在代码中硬编码 API Key，必须通过 `.env` 读取
+- **鲁棒性**: 必须处理网络超时和 JSON 解析失败的情况，提供降级输出
 
-```bash
-# 克隆项目
-git clone <repository-url>
-cd vibe_factory
+### 架构生成约束 (Architecture Rules)
+- **目录隔离**: 业务代码必须存在于 `output/项目名/src` 目录下，严禁污染根目录
+- **协议先行**: 模块间通信必须定义明确的数据模型 (Pydantic/Interface)
+- **PnC 准则**: 所有任务 (Tasks) 必须包含物理路径 (`target_path`) 和可执行的验证步骤 (`verification`)
 
-# 创建虚拟环境（推荐）
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或
-venv\Scripts\activate  # Windows
+### 辩论准则 (Debate Rules)
+- **冲突挖掘**: 审计者 (Auditor) 必须强制指出提案中的 3 个技术弱点
+- **共识收敛**: 必须根据审计意见生成最终的 JSON 规格说明书
 
-# 设置环境变量
-cp .env.example .env
-# 编辑 .env 文件，添加你的 Google API Key
-```
+## 快速开始
 
-### 2. 安装依赖
+1. 安装依赖：
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-pip install -r requirements.txt
-```
+2. 配置环境变量：
+   ```bash
+   cp .env.example .env
+   # 在 .env 文件中填入你的 API 密钥
+   ```
 
-### 3. 运行架构师
+3. 运行框架：
+   ```bash
+   python main.py
+   ```
 
-```bash
-# 交互式模式（默认）
-python main.py
-
-# 指定 AI 提供商
-python main.py --provider gemini "创建一个基于 FastAPI 的 REST API 项目"
-
-# 从文件读取需求
-python main.py --file requirements.txt
-
-# 查看帮助
-python main.py --help
-```
-
-### 4. 架构设计流程
-
-1. **提案阶段**：提案者 AI 根据需求提出项目架构方案
-2. **审计阶段**：审计者 AI 审查方案并提出改进意见
-3. **辩论阶段**：双方 AI 进行多轮对话优化方案
-4. **实施阶段**：物理架构师创建实际的目录和文件
-
-## 📁 项目结构
+## 架构概览
 
 ```
-vibe_factory/
-├── main.py                # 终端入口，负责 CLI 交互
-├── core/
-│   ├── orchestrator.py    # 辩论指挥官：控制模型对话流转
-│   └── architect.py       # 物理实现：创建目录、文件和 SPEC.md
-├── providers/             # 模型驱动层 (可扩展)
-│   ├── base.py            # 定义所有 AI 必须遵守的接口
-│   ├── gemini.py          # Gemini 适配器
-│   └── zhipu.py           # GLM 适配器
-├── schema/
-│   └── project.py         # Pydantic 协议定义
-└── prompts/               # 这里的提示词要按角色拆分
-    ├── proposer.txt       # 提案者人设
-    └── auditor.txt        # 审计者人设
+core/
+├── orchestrator.py    # 核心辩论协调器
+└── architect.py       # 项目结构生成器
+providers/
+├── base.py           # 基础提供者类
+├── gemini.py         # Google Gemini 提供者
+└── zhipu.py          # Zhipu AI 提供者
+schema/
+└── project.py        # 项目规格数据模型
+prompts/
+├── system.txt        # 系统提示词
+└── architect.txt     # 架构师提示词
+output/               # 生成的项目存放目录
 ```
 
-## 🎯 使用示例
+## 使用场景
 
-### 输入需求示例：
-```
-创建一个用户管理系统，包含以下功能：
-1. 用户注册和登录
-2. JWT 认证
-3. 用户信息管理（CRUD）
-4. 权限管理（管理员/普通用户）
-使用 FastAPI + SQLAlchemy + PostgreSQL
-```
+- 自动化项目脚手架生成
+- 技术方案辩论与优化
+- 快速原型开发
+- 团队协作辅助工具
 
-### 自动生成的输出：
-- ✅ **完整项目目录结构**
-- ✅ **详细的 SPEC.md 规格文档**
-- ✅ **tasks.json 任务配置**
-- ✅ **代码占位文件和模板**
-- ✅ **依赖配置文件**
+## 配置系统
 
-## 🏛️ 架构设计原则
+Vibe Nexus 框架支持灵活的AI提供者配置，您可以根据需要配置不同的AI组合：
 
-### 核心原则
-1. **禁止根目录污染** - 所有输出必须在 `output/` 项目子目录下
-2. **路径严格性** - 使用跨平台兼容的完整路径
-3. **验收导向设计** - 每个任务都有明确的 `verification` 验收标准
-4. **依赖管理** - 任务间依赖关系清晰明确
+### 配置文件结构
 
-### AI 架构师人格
-- **系统性思维** - 从整体架构角度思考问题
-- **严谨细致** - 对路径、依赖、接口要求严格
-- **前瞻性** - 考虑可维护性和扩展性
-- **责任感** - 对架构决策负责
+配置文件位于 `config/ai_config.json`，支持以下参数：
 
-## 📊 数据模型
-
-### ProjectSpec 模型
-```python
-class ProjectSpec(BaseModel):
-    id: str                    # 项目唯一标识
-    name: str                  # 项目名称
-    description: str           # 项目描述
-    version: str               # 版本号
-    author: str                # 作者
-    root_directory: str        # 项目根目录
-    tasks: List[Task]         # 任务列表
-    tech_stack: Dict[str, str] # 技术栈配置
-    dependencies: Dict[str, str] # 项目依赖
-    config: Dict[str, Any]    # 配置信息
-    metadata: Dict[str, Any]  # 元数据
+```json
+{
+  "proposer": {
+    "provider": "gemini",      // 提议者提供者 (gemini 或 zhipu)
+    "model": "gemini-latest-flash"  // 提议者模型名称
+  },
+  "auditor": {
+    "provider": "zhipu",       // 审计者提供者 (gemini 或 zhipu)
+    "model": "glm-4-flash"     // 审计者模型名称
+  },
+  "fallback_models": {
+    "gemini": "gemini-pro",
+    "zhipu": "glm-4"
+  },
+  "api_timeout": 120,
+  "retry_attempts": 3
+}
 ```
 
-### Task 模型
-```python
-class Task(BaseModel):
-    id: str                    # 任务唯一标识
-    title: str                 # 任务标题
-    description: str           # 任务描述
-    target_path: str           # 🎯 强制路径（必需）
-    verification: str          # ✅ 验收标准（必需）
-    dependencies: List[str]    # 依赖任务ID
-    priority: str              # 优先级（high/medium/low）
-    status: str                # 状态（pending/in_progress/completed）
-    metadata: Dict[str, Any]   # 元数据
-```
+### 配置说明
 
-## ⚙️ 配置说明
+框架使用 `config/ai_config.json` 作为默认配置文件，您可以根据需要修改其中的AI提供者和模型配置。
 
-### 环境变量
+### 自定义配置
 
-| 变量名 | 必需 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `GOOGLE_API_KEY` | ✅ | - | Google API 密钥 |
-| `GEMINI_MODEL` | ❌ | `gemini-1.5-flash` | 使用的模型 |
-| `PROJECT_OUTPUT_DIR` | ❌ | `output` | 项目输出目录 |
+您可以创建自己的配置文件，例如让两个AI都使用相同模型进行辩论，或尝试不同的模型组合。
 
-### requirements.txt 主要依赖
-```
-google-generativeai>=0.3.0      # Google Generative AI SDK (Gemini)
-pydantic>=2.5.0                # Data validation
-python-dotenv>=1.0.0           # Environment variable management
-```
-
-## 🧪 测试验证
-
-运行测试脚本验证系统完整性：
-
-```bash
-python test.py
-```
-
-测试覆盖：
-- ✅ 模块导入测试
-- ✅ Pydantic 模型验证
-- ✅ 文件结构检查
-- ✅ 提示文件内容验证
-- ✅ 主程序语法检查
-
-## 🔧 开发指南
-
-### 添加新的代码模板
-
-在 `main.py` 的 `_generate_stub_content` 方法中添加新扩展名支持：
+要使用自定义配置，可以修改 `main.py` 中的 Orchestrator 初始化：
 
 ```python
-elif ext == '.your_ext':
-    return f"""# {task.title}
-# {task.description}
-# 验收标准: {task.verification}
-
-# TODO: 实现具体内容
-"""
+# 使用自定义配置
+orchestrator = Orchestrator("config/your_custom_config.json")
 ```
-
-### 自定义架构师人格
-
-编辑 `prompts/system.txt` 文件来修改 AI 的行为原则和工作流程。
-
-### 扩展功能
-
-1. **添加新的验证规则** - 在 Pydantic 模型中添加自定义验证器
-2. **集成其他 AI 模型** - 扩展 API 调用逻辑
-3. **添加模板引擎** - 使用 Jinja2 等模板引擎生成更复杂的代码
-
-## 🐛 故障排除
-
-### 常见问题
-
-**Q: API 调用失败**
-```
-A: 检查 .env 文件中的 GOOGLE_API_KEY 是否正确设置
-```
-
-**Q: 编码错误**
-```
-A: 确保使用 UTF-8 编码，特别是在 Windows 系统上
-```
-
-**Q: 路径错误**
-```
-A: 检查 prompts/ 目录下的文件是否存在
-```
-
-**Q: 依赖安装失败**
-```
-A: 尝试升级 pip: pip install --upgrade pip
-```
-
-## 🤝 贡献指南
-
-1. **Fork** 项目到你的 GitHub
-2. **创建** 功能分支: `git checkout -b feature/amazing-feature`
-3. **提交** 更改: `git commit -m 'Add amazing feature'`
-4. **推送** 到分支: `git push origin feature/amazing-feature`
-5. **创建** Pull Request
-
-### 代码规范
-
-- 使用 **Black** 进行代码格式化
-- 遵循 **PEP 8** 编码规范
-- 添加适当的 **类型提示**
-- 编写 **单元测试**
-
-## 📄 许可证
-
-本项目采用 **MIT 许可证** - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 🙏 致谢
-
-- [Google AI](https://ai.google.dev/) - 提供强大的 AI 能力
-- [Pydantic](https://pydantic-docs.helpmanual.io/) - 优秀的数据验证库
-- [FastAPI](https://fastapi.tiangolo.com/) - 现代、快速的 Web 框架
-
-## 📞 联系方式
-
-- 📧 **Issues**: [GitHub Issues](https://github.com/your-username/vibe_factory/issues)
-- 🐦 **Twitter**: [@your-twitter](https://twitter.com/your-twitter)
-- 💬 **Discord**: [加入讨论](https://discord.gg/your-server)
-
----
-
-<div align="center">
-  <strong>🏗️ 让 AI 为你构建完美的项目架构！</strong><br>
-  <em>Made with ❤️ by Vibe Coding Team</em>
-</div>
