@@ -45,7 +45,17 @@ class Architect:
 
         # 创建 README.md
         readme_path = project_root / "README.md"
-        readme_content = f"# {spec.project_name}\n\n{spec.description}\n\n## 项目结构\n\n此项目由 Vibe Nexus 框架自动生成。\n"
+
+        # 生成技术债章节
+        tech_debt_section = "\n## 技术债\n\n以下是在 flexible 路径下可能存在的重构风险：\n\n"
+        for task in spec.tasks:
+            if task.flexibility == "flexible":
+                tech_debt_section += f"- **{task.title}**: 由于采用灵活实现路径，未来可能需要重构以提升性能或标准化实现方式\n"
+
+        if tech_debt_section == "\n## 技术债\n\n以下是在 flexible 路径下可能存在的重构风险：\n\n":
+            tech_debt_section = "\n## 技术债\n\n该项目中没有使用 flexible 路径的任务，因此没有相关的重构风险。\n"
+
+        readme_content = f"# {spec.project_name}\n\n{spec.description}\n\n## 项目结构\n\n此项目由 Vibe Nexus 框架自动生成。\n{tech_debt_section}"
         readme_path.write_text(readme_content, encoding='utf-8')
 
         # 创建架构提案文档 (TECH_PROPOSAL.md)
@@ -211,35 +221,159 @@ console.log("Test placeholder for {task.title}");
         为代码文件生成默认内容
         """
         if extension == '.py':
-            return f'''"""
-{task.title}
+            # 根据technical_requirement中的关键词生成相应代码片段
+            code_snippets = []
 
-Description: {task.description}
-"""
-def main():
-    # TODO: 实现 {task.title}
-    # {task.description}
-    pass
+            # 检查是否需要线程锁
+            if 'threading.RLock' in task.technical_requirement or 'RLock' in task.technical_requirement or 'lock' in task.technical_requirement.lower():
+                code_snippets.append('import threading\n\nlock = threading.RLock()\n')
 
-if __name__ == "__main__":
-    main()
+            # 检查是否需要接口或类定义
+            if 'interface' in task.technical_requirement.lower() or 'abstract' in task.technical_requirement.lower():
+                code_snippets.append('from abc import ABC, abstractmethod\n\n')
+
+            # 检查是否需要异常处理
+            if 'exception' in task.technical_requirement.lower() or 'error handling' in task.technical_requirement.lower():
+                code_snippets.append('# 异常处理将在实现中添加\n')
+
+            # 检查是否需要特定的数据结构
+            if 'queue' in task.technical_requirement.lower():
+                code_snippets.append('from queue import Queue\n')
+            elif 'dict' in task.technical_requirement.lower() or 'dictionary' in task.technical_requirement.lower():
+                code_snippets.append('# 使用字典作为数据结构\n')
+
+            snippets_str = '\n'.join(code_snippets) if code_snippets else ''
+
+            # 根据是否需要接口来构建类定义
+            if 'interface' in task.technical_requirement.lower():
+                # 构建接口类定义
+                class_lines = [
+                    f'class {task.title.replace(" ", "").replace("-", "")}(ABC):',
+                    f'    """{task.title} implementation class"""',
+                    f'    ',
+                    f'    def __init__(self):',
+                    f'        """Initialize {task.title}"""',
+                    f'        pass',
+                    f'    ',
+                    f'    @abstractmethod',
+                    f'    def execute(self):',
+                    f'        """Execute the main functionality"""'
+                ]
+
+                # 添加锁相关的代码
+                if 'threading.RLock' in task.technical_requirement or 'RLock' in task.technical_requirement or 'lock' in task.technical_requirement.lower():
+                    class_lines.extend([
+                        f'        with lock:',
+                        f'            # TODO: 实现 {task.title}',
+                        f'            # {task.description}',
+                        f'            # Technical Requirement: {task.technical_requirement}',
+                        f'            pass'
+                    ])
+                else:
+                    class_lines.extend([
+                        f'        # TODO: 实现 {task.title}',
+                        f'        # {task.description}',
+                        f'        # Technical Requirement: {task.technical_requirement}',
+                        f'        pass'
+                    ])
+
+                class_def = '\n'.join(class_lines)
+            else:
+                # 构建普通类定义
+                class_lines = [
+                    f'class {task.title.replace(" ", "").replace("-", "")}():',
+                    f'    """{task.title} implementation class"""',
+                    f'    ',
+                    f'    def __init__(self):',
+                    f'        """Initialize {task.title}"""',
+                    f'        pass',
+                    f'    ',
+                    f'    def execute(self):',
+                    f'        """Execute the main functionality"""'
+                ]
+
+                # 添加锁相关的代码
+                if 'threading.RLock' in task.technical_requirement or 'RLock' in task.technical_requirement or 'lock' in task.technical_requirement.lower():
+                    class_lines.extend([
+                        f'        with lock:',
+                        f'            # TODO: 实现 {task.title}',
+                        f'            # {task.description}',
+                        f'            # Technical Requirement: {task.technical_requirement}',
+                        f'            pass'
+                    ])
+                else:
+                    class_lines.extend([
+                        f'        # TODO: 实现 {task.title}',
+                        f'        # {task.description}',
+                        f'        # Technical Requirement: {task.technical_requirement}',
+                        f'        pass'
+                    ])
+
+                class_def = '\n'.join(class_lines)
+
+            # 构建完整的文件内容
+            content_parts = [
+                f'"""',
+                f'{task.title}',
+                f'',
+                f'Description: {task.description}',
+                f'Technical Requirement: {task.technical_requirement}',
+                f'"""',
+                snippets_str,
+                '',
+                class_def,
+                '',
+                f'def main():',
+                f'    # TODO: 实现 {task.title}',
+                f'    # {task.description}',
+                f'    # Technical Requirement: {task.technical_requirement}',
+                f'    pass',
+                f'',
+                f'if __name__ == "__main__":',
+                f'    main()'
+            ]
+            return '\n'.join(content_parts)
+        elif extension == '.java':
+            # Java代码生成
+            return f'''/**
+ * {task.title}
+ *
+ * Description: {task.description}
+ * Technical Requirement: {task.technical_requirement}
+ */
+public class {task.title.replace(" ", "").replace("-", "")} {{
+
+    // TODO: 实现 {task.title}
+    // {task.description}
+    // Technical Requirement: {task.technical_requirement}
+
+    public {task.title.replace(" ", "").replace("-", "")}() {{
+        // Constructor implementation
+    }}
+
+    public void execute() {{
+        // Implementation goes here
+    }}
+}}
 '''
         elif extension in ['.js', '.ts', '.jsx', '.tsx']:
             return f'''/**
  * {task.title}
- * 
+ *
  * Description: {task.description}
+ * Technical Requirement: {task.technical_requirement}
  */
 
 // TODO: 实现 {task.title}
 // {task.description}
+// Technical Requirement: {task.technical_requirement}
 
 export const {task.title.replace(" ", "").replace("-", "_")} = () => {{
     // Implementation goes here
 }};
 '''
         else:
-            return f"# {task.title}\n# Description: {task.description}\n\n"
+            return f"# {task.title}\n# Description: {task.description}\n# Technical Requirement: {task.technical_requirement}\n\n"
     
     def _generate_default_markdown_content(self, task: 'Task') -> str:
         """

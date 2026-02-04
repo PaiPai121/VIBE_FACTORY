@@ -16,11 +16,11 @@ class Orchestrator:
     def __init__(self, config_path: str = "config/ai_config.json", max_debate_rounds: int = 1):
         # 加载配置文件
         self.config = self._load_config(config_path)
-
+        
         # 根据配置初始化提供者
         self.proposer = self._initialize_provider(self.config.get("proposer", {}), "proposer")
         self.auditor = self._initialize_provider(self.config.get("auditor", {}), "auditor")
-
+        
         # 设置最大辩论轮数
         self.max_debate_rounds = max_debate_rounds
 
@@ -52,7 +52,7 @@ class Orchestrator:
         """根据配置初始化提供者"""
         provider_type = provider_config.get("provider", "gemini")
         model = provider_config.get("model")
-
+        
         try:
             if provider_type.lower() == "gemini":
                 from providers.gemini import GeminiProvider
@@ -70,7 +70,7 @@ class Orchestrator:
         except ImportError as e:
             print(f"[ERROR] 无法导入 {provider_type} 提供者: {e}")
             return None
-        
+
     async def conduct_debate(self, initial_prompt: str) -> Dict[str, Any]:
         """
         进行多轮辩论，包括提议、审计、反馈和共识达成
@@ -122,7 +122,6 @@ class Orchestrator:
                 retry_count += 1
                 print(f"⚠️  提议者生成方案失败，正在重试 ({retry_count}/{max_retries})... 错误: {proposal['error']}")
                 if retry_count < max_retries:
-                    import asyncio
                     await asyncio.sleep(2)  # 等待2秒后重试
 
         if not proposal or not proposal["success"]:
@@ -143,7 +142,7 @@ class Orchestrator:
         })
 
         # 显示初始方案
-        print(f"\n📋 提议者初始方案:\n{proposal['content'][:500]}...")  # 只示前500个字符
+        print(f"\n📋 提议者初始方案:\n{proposal['content'][:500]}...")  # 显示前500个字符
         print(f"\n🔍 审计者({auditor_name})正在分析方案并指出技术弱点...")
         # 步骤2: 审计者对方案进行审计，强制指出3个技术弱点
         audit_prompt = (
@@ -151,9 +150,10 @@ class Orchestrator:
             f"技术方案：\n{proposal['content']}\n\n"
             f"请严格按以下格式提供审计结果：\n"
             f"1. 技术弱点一：[具体问题]\n"
-            f"2. 技术弱点二：[具体问题]\n"
+            f"2. 技术弱点二：[具体问题]\n" 
             f"3. 技术弱点三：[具体问题]\n"
-            f"4. 改进建议：[针对上述问题的改进建议]"
+            f"4. 改进建议：[针对上述问题的改进建议]\n\n"
+            f"注意：必须指出至少3个技术弱点，如果少于3个，请重新审查并补充更多技术弱点。"
         )
 
         # 审计者调用（带重试机制）
@@ -165,19 +165,41 @@ class Orchestrator:
             audit_result = await self.auditor.generate_response(audit_prompt)
 
             if audit_result["success"]:
-                print("✅ 审计者分析完成")
-                break
+                # 检查审计结果是否包含足够的技术弱点
+                audit_content = audit_result["content"]
+                weakness_count = self._count_technical_weaknesses(audit_content)
+
+                if weakness_count < 3:
+                    print(f"⚠️  审计者仅指出 {weakness_count} 个技术弱点，少于要求的3个，正在重新审计...")
+                    # 更新提示词，强调需要更多技术弱点
+                    audit_prompt = (
+                        f"作为技术审计专家，请再次仔细审查以下技术方案，之前的审计不够充分，必须指出更多技术弱点：\n\n"
+                        f"技术方案：\n{proposal['content']}\n\n"
+                        f"请严格按以下格式提供审计结果：\n"
+                        f"1. 技术弱点一：[具体问题]\n"
+                        f"2. 技术弱点二：[具体问题]\n" 
+                        f"3. 技术弱点三：[具体问题]\n"
+                        f"4. 技术弱点四：[具体问题，如果有的话]\n"
+                        f"5. 技术弱点五：[具体问题，如果有的话]\n"
+                        f"6. 改进建议：[针对上述问题的改进建议]\n\n"
+                        f"重要：必须指出至少3个技术弱点，最好能指出5个，确保方案有足够的深度。"
+                    )
+                    retry_count += 1  # 增加重试计数，但不超出限制
+                    continue
+                else:
+                    print(f"✅ 审计者分析完成，指出 {weakness_count} 个技术弱点")
+                    break
             else:
                 retry_count += 1
                 print(f"⚠️  审计者分析方案失败，正在重试 ({retry_count}/{max_retries})... 错误: {audit_result['error']}")
                 if retry_count < max_retries:
-                    import asyncio
                     await asyncio.sleep(2)  # 等待2秒后重试
 
         if not audit_result or not audit_result["success"]:
+            error_msg = audit_result['error'] if audit_result else '未知错误'
             return {
                 "final_spec": None,
-                "debate_log": debate_log + [{"error": f"审计者分析方案失败: {audit_result['error'] if audit_result else '未知错误'}"}],
+                "debate_log": debate_log + [{"error": f"审计者分析方案失败: {error_msg}"}],
                 "success": False
             }
 
@@ -212,7 +234,6 @@ class Orchestrator:
                 retry_count += 1
                 print(f"⚠️  提议者第一次改进方案失败，正在重试 ({retry_count}/{max_retries})... 错误: {first_improved_proposal['error']}")
                 if retry_count < max_retries:
-                    import asyncio
                     await asyncio.sleep(2)  # 等待2秒后重试
 
         if not first_improved_proposal or not first_improved_proposal["success"]:
@@ -254,19 +275,12 @@ class Orchestrator:
                 retry_count += 1
                 print(f"⚠️  审计者第二次审核失败，正在重试 ({retry_count}/{max_retries})... 错误: {second_audit['error']}")
                 if retry_count < max_retries:
-                    import asyncio
                     await asyncio.sleep(2)  # 等待2秒后重试
 
         if not second_audit or not second_audit["success"]:
             # 即使第二次审核失败，我们也继续使用第一次改进的结果
             print(f"⚠️  审计者第二次审核失败，使用第一次审核结果: {second_audit['error'] if second_audit else '未知错误'}")
             second_audit = {"content": "第二次审核未能完成，使用第一次审核结果"}
-        else:
-            debate_log.append({
-                "speaker": "auditor",
-                "content": second_audit["content"],
-                "summary": "第二次审核并提供进一步改进建议"
-            })
 
         # 显示第二轮审核结果
         print(f"\n🔍 审计者第二轮审核结果:\n{second_audit['content'][:500]}...")  # 显示前500个字符
@@ -298,7 +312,6 @@ class Orchestrator:
                 retry_count += 1
                 print(f"⚠️  提议者方案精炼失败，正在重试 ({retry_count}/{max_retries})... 错误: {refined_proposal['error']}")
                 if retry_count < max_retries:
-                    import asyncio
                     await asyncio.sleep(2)  # 等待2秒后重试
 
         if not refined_proposal or not refined_proposal["success"]:
@@ -365,7 +378,6 @@ class Orchestrator:
                 retry_count += 1
                 print(f"⚠️  生成最终规格说明失败，正在重试 ({retry_count}/{max_retries})... 错误: {final_spec_result['error']}")
                 if retry_count < max_retries:
-                    import asyncio
                     await asyncio.sleep(2)  # 等待2秒后重试
 
         if not final_spec_result or not final_spec_result["success"]:
@@ -392,7 +404,7 @@ class Orchestrator:
             "debate_log": debate_log,
             "success": True
         }
-    
+
     def _extract_json_from_response(self, text: str) -> Dict[str, Any]:
         """
         从AI响应中提取JSON内容
@@ -489,7 +501,40 @@ class Orchestrator:
         except json.JSONDecodeError as e:
             print(f"❌ JSON修复失败: {str(e)}")
             return {"error": f"JSON解析失败: {str(e)}", "raw_response": text}
-    
+
+    def _count_technical_weaknesses(self, audit_content: str) -> int:
+        """
+        计算审计内容中技术弱点的数量
+        """
+        import re
+        # 查找包含"技术弱点"、"弱点"、"问题"等关键词的条目
+        # 匹配 "技术弱点一："、"技术弱点二：" 等模式
+        weakness_pattern = r'(?:技术弱点|弱点|问题|缺陷|漏洞|风险)[一二三四五六七八九十\d]+[:：]'
+        matches = re.findall(weakness_pattern, audit_content, re.IGNORECASE)
+
+        # 如果没有找到编号模式，尝试查找列表项
+        if len(matches) == 0:
+            # 查找以数字开头的条目，如 "1." 或 "1、"
+            numbered_items = re.findall(r'\d+[\.、]', audit_content)
+            # 过虑掉那些明显不是弱点的条目
+            potential_weaknesses = []
+            for item in numbered_items:
+                # 检查条目附近是否包含弱点相关关键词
+                start_pos = audit_content.find(item)
+                # 获取前后100个字符
+                context_start = max(0, start_pos - 100)
+                context_end = min(len(audit_content), start_pos + len(item) + 100)
+                context = audit_content[context_start:context_end]
+
+                # 检查上下文中是否包含弱点相关关键词
+                weakness_keywords = ['问题', '缺陷', '风险', '不足', '挑战', '难点', '隐患', '障碍', '错误', 'bug', 'issue']
+                if any(keyword in context for keyword in weakness_keywords):
+                    potential_weaknesses.append(item)
+
+            return len(potential_weaknesses)
+
+        return len(matches)
+
     async def run_single_round_debate(self, topic: str) -> Dict[str, Any]:
         """
         运行多轮辩论（包含博弈反馈循环）
