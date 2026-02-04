@@ -95,9 +95,23 @@ async def main():
             proposer_model = getattr(orchestrator.proposer, 'model', 'Unknown') if orchestrator.proposer else 'Unknown'
             auditor_model = getattr(orchestrator.auditor, 'model', 'Unknown') if orchestrator.auditor else 'Unknown'
             print(f"提議者({proposer_name}:{proposer_model})和審計者({auditor_name}:{auditor_model})正在討論最佳方案...\n")
-            
+
+            # 询问用户辩论轮数
+            print("请输入辩论轮数 (默认为1轮，输入数字):")
+            try:
+                num_rounds_input = input("> ").strip()
+                num_rounds = int(num_rounds_input) if num_rounds_input.isdigit() else 1
+                num_rounds = max(1, min(num_rounds, 5))  # 限制在1-5轮之间
+                print(f"使用 {num_rounds} 轮辩论\n")
+            except ValueError:
+                num_rounds = 1
+                print(f"使用默认 {num_rounds} 轮辩论\n")
+
             # 运行辩论流程
-            debate_result = await orchestrator.run_single_round_debate(project_description)
+            if num_rounds == 1:
+                debate_result = await orchestrator.run_single_round_debate(project_description)
+            else:
+                debate_result = await orchestrator.run_multi_round_debate(project_description, num_rounds)
 
             if debate_result["success"]:
                 final_spec = debate_result["final_spec"]

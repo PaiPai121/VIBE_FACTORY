@@ -12,14 +12,17 @@ class Orchestrator:
     核心协调器，实现异步辩论流
     展示两个AI提供者之间的观点博弈
     """
-    
-    def __init__(self, config_path: str = "config/ai_config.json"):
+
+    def __init__(self, config_path: str = "config/ai_config.json", max_debate_rounds: int = 1):
         # 加载配置文件
         self.config = self._load_config(config_path)
 
         # 根据配置初始化提供者
         self.proposer = self._initialize_provider(self.config.get("proposer", {}), "proposer")
         self.auditor = self._initialize_provider(self.config.get("auditor", {}), "auditor")
+
+        # 设置最大辩论轮数
+        self.max_debate_rounds = max_debate_rounds
 
     def _load_config(self, config_path: str) -> dict:
         """加载配置文件"""
@@ -438,10 +441,94 @@ class Orchestrator:
 
             return data
         except json.JSONDecodeError as e:
-            return {"error": f"JSON解析失败: {str(e)}", "raw_response": json_str}
+            # 如果JSON解析失败，尝试修复常见的JSON格式问题
+            print(f"警告: JSON解析失败，尝试修复格式问题: {str(e)}")
+            return self._attempt_json_repair(json_str)
+
+    def _attempt_json_repair(self, text: str) -> Dict[str, Any]:
+        """
+        尝试修复常见的JSON格式问题
+        """
+        try:
+            # 尝试修复截断的字符串（以...结尾的）
+            import re
+            # 查找以...结尾的字符串并移除...
+            repaired_text = re.sub(r'"([^"]*)\.\.\.', r'"\1', text)
+
+            # 尝试修复缺少逗号的问题
+            # 在对象属性之间添加可能遗漏的逗号
+            repaired_text = re.sub(r'\}\s*\n\s*"(\w+)"', r'},\n  "\1"', repaired_text)
+            repaired_text = re.sub(r'\]\s*\n\s*"(\w+)"', r'],\n  "\1"', repaired_text)
+
+            # 再次尝试解析
+            data = json.loads(repaired_text)
+
+            # 应用同样的字段处理逻辑
+            if "architecture_proposal" in data:
+                if isinstance(data["architecture_proposal"], dict):
+                    data["architecture_proposal"] = json.dumps(data["architecture_proposal"], ensure_ascii=False)
+                elif not isinstance(data["architecture_proposal"], str):
+                    data["architecture_proposal"] = str(data["architecture_proposal"])
+
+            if "tasks" in data:
+                for task in data["tasks"]:
+                    if "technical_requirement" in task:
+                        if isinstance(task["technical_requirement"], dict):
+                            task["technical_requirement"] = json.dumps(task["technical_requirement"], ensure_ascii=False)
+                        elif not isinstance(task["technical_requirement"], str):
+                            task["technical_requirement"] = str(task["technical_requirement"])
+
+                    if "verification" in task:
+                        if isinstance(task["verification"], list):
+                            task["verification"] = "; ".join(str(item) for item in task["verification"])
+                        elif not isinstance(task["verification"], str):
+                            task["verification"] = str(task["verification"])
+
+            print("[PASS] JSON格式修复成功")
+            return data
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON修复失败: {str(e)}")
+            return {"error": f"JSON解析失败: {str(e)}", "raw_response": text}
     
     async def run_single_round_debate(self, topic: str) -> Dict[str, Any]:
         """
         运行多轮辩论（包含博弈反馈循环）
         """
         return await self.conduct_debate(topic)
+
+    async def run_multi_round_debate(self, topic: str, num_rounds: int = None) -> Dict[str, Any]:
+        """
+        运行多轮辩论，允许用户自定义辩论轮数
+        """
+        rounds = num_rounds if num_rounds is not None else self.max_debate_rounds
+        print(f"🔄 开始 {rounds} 轮辩论...")
+
+        all_results = []
+        current_topic = topic
+
+        for round_num in range(1, rounds + 1):
+            print(f"🔄 第 {round_num} 轮辩论开始...")
+            result = await self.conduct_debate(current_topic)
+
+            if result["success"]:
+                all_results.append(result)
+                print(f"✅ 第 {round_num} 轮辩论完成")
+
+                # 如果有多轮，可以使用上一轮的结果作为下一轮的输入
+                if round_num < rounds and "final_spec" in result and result["final_spec"]:
+                    # 可以将上一轮的规格作为参考，继续深化讨论
+                    current_topic = f"基于之前的设计：{current_topic}，请进一步优化和完善以下方面：{result['final_spec'].get('architecture_proposal', '')[:200]}"
+            else:
+                print(f"⚠️  第 {round_num} 轮辩论失败")
+                # 即使某一轮失败，也继续下一轮
+                continue
+
+        if all_results:
+            # 返回最后一轮的成功结果，或者合并所有结果
+            return all_results[-1]
+        else:
+            return {
+                "final_spec": None,
+                "debate_log": [{"error": f"所有 {rounds} 轮辩论都失败了"}],
+                "success": False
+            }
