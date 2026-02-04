@@ -351,7 +351,8 @@ class Orchestrator:
             '      "technical_requirement": "...",\n'
             '      "target_path": "...",\n'
             '      "verification": "...",\n'
-            '      "flexibility": "fixed" \n'
+            '      "flexibility": "fixed",\n'
+            '      "dependencies": [1, 2, ...] \n'
             "    }\n"
             "  ]\n"
             "}\n\n"
@@ -360,7 +361,9 @@ class Orchestrator:
             "2. architecture_proposal字段必须包含整体架构设计方案，包括目录划分理由、技术选型决策树、设计模式、核心算法逻辑等。\n"
             "3. 每个任务的technical_requirement字段必须包含具体的技术实现细节和约束，如使用的锁、数据结构、错误处理逻辑等。\n"
             "4. 每个任务的flexibility字段必须设置为'fixed'或'flexible'之一，表示实现的灵活性程度。\n"
-            "5. 优先在architecture_proposal中定义抽象基类或接口协议。"
+            "5. 优先在architecture_proposal中定义抽象基类或接口协议。\n"
+            "6. 对于flexibility为'fixed'的核心接口任务，如果后续业务逻辑任务依赖于它们，则必须在dependencies字段中列出相应的任务ID。\n"
+            "7. dependencies字段应包含前置任务的ID列表，确保任务执行顺序正确。"
         )
 
         # 生成最终规格（带重试机制）
