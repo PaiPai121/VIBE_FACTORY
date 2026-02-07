@@ -81,17 +81,11 @@ class Architect:
             dev_log_content += f"- **验证标准**: {task.verification}\n\n"
         dev_log_path.write_text(dev_log_content, encoding='utf-8')
 
-        # 创建项目配置文件
+        # 创建项目配置文件 - 保存完整的项目规格，包括所有任务，供Coder读取
         config_path = project_root / "config" / "project.json"
-        config_content = {
-            "project_name": spec.project_name,
-            "description": spec.description,
-            "version": spec.version,  # 确保包含版本号以实现高度确定性
-            "architecture_proposal": spec.architecture_proposal,
-            "created_at": spec.created_at or "",
-            "updated_at": spec.updated_at or ""
-        }
-        config_path.write_text(json.dumps(config_content, ensure_ascii=False, indent=2), encoding='utf-8')
+        # 使用model_dump()方法获取完整的规格数据，包括所有任务
+        full_spec_dict = spec.model_dump()
+        config_path.write_text(json.dumps(full_spec_dict, ensure_ascii=False, indent=2), encoding='utf-8')
 
         # 生成环境设置脚本
         self._create_setup_scripts(project_root)
@@ -216,7 +210,7 @@ echo   set PYTHONPATH=%%cd%%;%%PYTHONPATH%%
 '''
         setup_bat_path.write_text(setup_bat_content, encoding='utf-8')
 
-        print(f"✅ 环境设置脚本已生成: {project_root.name}")
+        print(f"环境设置脚本已生成: {project_root.name}")
     
     def _create_task_artifacts(self, task: 'Task', project_root: Path) -> bool:
         """
@@ -224,16 +218,21 @@ echo   set PYTHONPATH=%%cd%%;%%PYTHONPATH%%
         遵循PnC准则，每个任务都有物理路径和验证步骤
         """
         try:
-            # 解析目标路径
-            target_path = project_root / task.target_path.lstrip('/')
+            # 解析目标路径 - 修复路径处理问题，规范化路径分隔符
+            normalized_target_path = task.target_path.replace('\\', '/').replace('//', '/')
+            # 修复路径中包含空格的问题
+            target_path = project_root / normalized_target_path.lstrip('/')
 
+            # 确保项目根目录存在
+            project_root.mkdir(parents=True, exist_ok=True)
+            
             # 如果目标路径以 / 结尾，表示是目录
-            if task.target_path.endswith('/'):
+            if normalized_target_path.endswith('/'):
                 target_path.mkdir(parents=True, exist_ok=True)
             else:
                 # 否则是文件，创建父目录并写入内容
                 target_path.parent.mkdir(parents=True, exist_ok=True)
-
+                
                 # 根据文件扩展名生成默认内容
                 if target_path.suffix.lower() in ['.py', '.js', '.ts', '.jsx', '.tsx']:
                     content = self._generate_default_code_content(task, target_path.suffix)
@@ -243,45 +242,79 @@ echo   set PYTHONPATH=%%cd%%;%%PYTHONPATH%%
                     content = self._generate_default_config_content(task)
                 else:
                     content = self._generate_default_generic_content(task)
-
+                    
                 target_path.write_text(content, encoding='utf-8')
-
+                
             # 创建验证脚本（如果适用）
             self._create_verification_script(task, project_root)
-
+            
             # 为src目录下的任务强制创建测试占位
-            if task.target_path.startswith('src/') and task.target_path.endswith(('.py', '.js', '.ts')):
+            if normalized_target_path.startswith('src/') and normalized_target_path.endswith(('.py', '.js', '.ts')):
                 self._create_test_placeholder(task, project_root)
-
+                
             return True
+        except PermissionError as e:
+            print(f"权限错误，无法创建任务产物 {task.id} ({task.title}): {str(e)}")
+            print(f"  尝试的路径: {target_path}")
+            print(f"  项目根目录: {project_root}")
+            print(f"  提示: 可能是路径中包含特殊字符或权限不足")
+            return False
+        except FileNotFoundError as e:
+            print(f"路径错误，无法创建任务产物 {task.id} ({task.title}): {str(e)}")
+            print(f"  尝试的路径: {target_path}")
+            print(f"  项目根目录: {project_root}")
+            print(f"  提示: 可能是路径中包含非法字符或路径太深")
+            return False
         except Exception as e:
             print(f"创建任务产物失败 {task.id} ({task.title}): {str(e)}")
+            print(f"  尝试的路径: {target_path}")
+            print(f"  项目根目录: {project_root}")
             return False
 
     def _create_test_placeholder(self, task: 'Task', project_root: Path):
         """
         为src目录下的任务强制创建测试占位
         """
-        # 生成测试文件名
-        src_path = task.target_path
+        # 生成测试文件名 - 修复路径分隔符问题
+        src_path = task.target_path.replace('\\', '/')  # 标准化路径分隔符
         if src_path.startswith('src/'):
             relative_path = src_path[4:]  # 移除 'src/' 前缀
         else:
             relative_path = src_path
 
-        # 生成测试文件路径
+        # 生成测试文件路径 - 修复路径处理问题
         test_dir = project_root / "tests"
-        if relative_path.endswith('.py'):
-            test_file_name = f"test_{relative_path.replace('/', '.').replace('.', '_')}.py"
-        elif relative_path.endswith(('.js', '.ts')):
-            test_file_name = f"test_{relative_path.replace('/', '.').replace('.', '_')}.js"
+        
+        # 修复文件名生成逻辑，防止路径中出现非法字符
+        # 将路径中的斜杠替换为下划线，但保留文件扩展名
+        path_parts = relative_path.split('/')
+        if len(path_parts) > 1:  # 有子目录
+            dir_parts = path_parts[:-1]  # 目录部分
+            file_part = path_parts[-1]  # 文件名部分
+            clean_path_parts = [part.replace('.', '_') for part in dir_parts]  # 目录部分替换点为下划线
+        else:  # 没有子目录，只有文件
+            dir_parts = []
+            file_part = path_parts[0] if path_parts else ""
+            clean_path_parts = []
+        
+        if file_part:  # 如果有文件名
+            if '.' in file_part:
+                name_part, ext_part = file_part.rsplit('.', 1)
+                clean_file_name = f"test_{name_part}_{ext_part}.py" if ext_part == 'py' else f"test_{name_part}_{ext_part}.js" if ext_part in ['js', 'ts'] else f"test_{name_part}_{ext_part}.py"
+            else:
+                clean_file_name = f"test_{file_part}.py"
         else:
-            test_file_name = f"test_{relative_path.replace('/', '.').replace('.', '_')}.py"
-
-        test_file_path = test_dir / test_file_name
-
-        # 确保测试目录存在
-        test_file_path.parent.mkdir(parents=True, exist_ok=True)
+            clean_file_name = "test_unnamed.py"
+            
+        # 构建完整的测试文件路径
+        if clean_path_parts:  # 如果有子目录
+            # 如果有子目录，创建对应的测试子目录结构
+            test_subdir = test_dir.joinpath(*clean_path_parts)
+            test_file_path = test_subdir / clean_file_name
+            test_subdir.mkdir(parents=True, exist_ok=True)
+        else:
+            test_file_path = test_dir / clean_file_name
+            test_dir.mkdir(parents=True, exist_ok=True)
 
         # 生成测试内容，将verification内容填入Docstring，并根据verification内容生成对应的测试函数名
         if relative_path.endswith('.py'):
